@@ -3,6 +3,7 @@ package com.example.lab_week_09
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,6 +34,10 @@ import com.example.lab_week_09.ui.theme.LAB_WEEK_09Theme
 import com.example.lab_week_09.ui.theme.OnBackgroundItemText
 import com.example.lab_week_09.ui.theme.OnBackgroundTitleText
 import com.example.lab_week_09.ui.theme.PrimaryTextButton
+import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
+import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
+
 
 //Previously we extend AppCompatActivity,
 //now we extend ComponentActivity
@@ -124,6 +129,13 @@ fun Home(
     }
     var inputField = remember { mutableStateOf(Student("")) }
 
+    val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+
+    val type = Types.newParameterizedType(List::class.java, Student::class.java)
+    val adapter = moshi.adapter<List<Student>>(type)
+
     HomeContent(
         listData,
         inputField.value,
@@ -134,7 +146,10 @@ fun Home(
                 inputField.value = Student("")
             }
         },
-        { navigateFromHomeToResult(listData.toList().toString()) }
+        {
+            val json = adapter.toJson(listData)
+            navigateFromHomeToResult(json)
+        }
     )
 }
 
@@ -170,24 +185,24 @@ fun HomeContent(
                         onInputValueChange(it)
                     }
                 )
-                Row {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
                     PrimaryTextButton(
-                        text = stringResource(
-                            id =
-                                R.string.button_click
-                        )
+                        text = stringResource(id = R.string.button_click),
+                        enabled = inputField.name.isNotBlank()
                     ) {
-                        onButtonClick()
+                        if (inputField.name.isNotBlank()) {
+                            onButtonClick()
+                        }
                     }
                     PrimaryTextButton(
-                        text = stringResource(
-                            id =
-                                R.string.button_navigate
-                        )
+                        text = stringResource(id = R.string.button_navigate)
                     ) {
                         navigateFromHomeToResult()
                     }
                 }
+
             }
         }
         items(listData) { item ->
@@ -208,13 +223,26 @@ fun HomeContent(
 //then displays the value of listData to the screen
 @Composable
 fun ResultContent(listData: String) {
-    Column(
+    val moshi = Moshi.Builder()
+        .add(KotlinJsonAdapterFactory())
+        .build()
+
+    val type = Types.newParameterizedType(List::class.java, Student::class.java)
+    val adapter = moshi.adapter<List<Student>>(type)
+
+    val studentList = adapter.fromJson(listData) ?: emptyList()
+
+    LazyColumn(
         modifier = Modifier
-            .padding(vertical = 4.dp)
+            .padding(16.dp)
             .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        //Here, we call the OnBackgroundItemText UI Element
-        OnBackgroundItemText(text = listData)
+        item {
+            OnBackgroundTitleText(text = "Result List")
+        }
+        items(studentList) { student ->
+            OnBackgroundItemText(text = student.name)
+        }
     }
 }
